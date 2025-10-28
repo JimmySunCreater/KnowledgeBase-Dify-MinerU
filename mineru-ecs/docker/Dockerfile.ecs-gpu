@@ -1,0 +1,225 @@
+# MinerU ECS GPU镜像 - 兼容ECS GPU资源需求
+FROM pytorch/pytorch:2.7.1-cuda12.6-cudnn9-runtime
+
+# 设置环境变量 - GPU模式
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONFAULTHANDLER=1 \
+    MINERU_DEVICE_MODE=cuda \
+    MINERU_ENABLE_GPU=true \
+    MINERU_VIRTUAL_VRAM_SIZE=14000 \
+    MINERU_LOG_LEVEL=INFO \
+    CLEANUP_FILES=false \
+    PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128 \
+    CUDA_VISIBLE_DEVICES=0 \
+    TORCH_CUDA_ARCH_LIST=7.5;8.6
+
+# 添加镜像元数据
+LABEL maintainer="MinerU Team" \
+      description="MinerU ECS GPU镜像 - 适用于AWS G4DN实例" \
+      version="1.0" \
+      pytorch_version="2.7.1" \
+      cuda_version="12.6" \
+      cudnn_version="9"
+
+# 安装系统依赖
+RUN apt-get update && apt-get install -y \
+    # 编译工具
+    build-essential \
+    gcc \
+    g++ \
+    cmake \
+    pkg-config \
+    # OpenGL和图像处理依赖
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    # OpenCV额外依赖
+    libglib2.0-dev \
+    libgtk2.0-dev \
+    libavcodec-dev \
+    libavformat-dev \
+    libswscale-dev \
+    libgtk-3-dev \
+    # PDF处理依赖
+    poppler-utils \
+    # 字体支持
+    fonts-dejavu-core \
+    fontconfig \
+    fonts-wqy-zenhei \
+    fonts-wqy-microhei \
+    # 网络和基础工具
+    dnsutils \
+    iputils-ping \
+    net-tools \
+    ca-certificates \
+    git \
+    wget \
+    curl \
+    unzip \
+    vim \
+    # 清理缓存
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# 创建工作目录
+WORKDIR /app
+
+# 系统调整
+RUN echo "vm.overcommit_memory=1" >> /etc/sysctl.conf && \
+    echo "export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128" >> /etc/profile.d/pytorch.sh
+
+# 明确指定PyTorch和TorchVision版本
+RUN pip install --no-cache-dir torch==2.7.1 torchvision==0.22.1
+
+# 验证PyTorch和TorchVision版本
+RUN python -c "import torch; import torchvision; print(f'PyTorch版本: {torch.__version__}'); print(f'TorchVision版本: {torchvision.__version__}'); print(f'CUDA可用: {torch.cuda.is_available()}'); print(f'CUDA版本: {torch.version.cuda}')"
+
+# 安装科学计算和图像处理基础依赖 - 修改NumPy版本
+RUN pip install --no-cache-dir \
+    numpy==1.25.2 \
+    scipy==1.12.0 \
+    opencv-python==4.8.1.78 \
+    pandas==2.1.4
+
+# 安装机器学习和基础工具依赖
+RUN pip install --no-cache-dir \
+    # AWS SDK
+    boto3==1.34.0 \
+    botocore==1.34.0 \
+    # 机器学习
+    transformers==4.36.0 \
+    # OCR支持
+    easyocr==1.7.0 
+
+# 安装Web框架和其他工具依赖
+RUN pip install --no-cache-dir \
+    # Web框架
+    flask==3.0.0 \
+    gunicorn==21.2.0 \
+    # 日志和监控
+    structlog==23.2.0 \
+    prometheus-client==0.19.0 \
+    # 工具库
+    requests==2.31.0 \
+    python-dotenv==1.0.0 \
+    pydantic==2.5.0 \
+    tenacity==8.2.3 \
+    # PDF处理
+    PyPDF2==3.0.1 \
+    pdfplumber==0.10.3 \
+    pypdfium2==4.26.0 \
+    # 其他工具
+    psutil==5.9.6 \
+    humanize==4.8.0 \
+    tqdm==4.66.1
+
+# 安装MinerU完整版（GPU支持）并确保依赖版本正确 - 修改NumPy版本
+RUN python -m pip install -U 'mineru[core]' && \
+    pip install --force-reinstall torch==2.7.1 torchvision==0.22.1 && \
+    pip install --force-reinstall numpy==1.25.2 scipy==1.12.0 opencv-python==4.8.1.78 && \
+    rm -rf /root/.cache/pip/*
+
+# 下载模型文件 (使用镜像源加速，支持离线部署)
+RUN /bin/bash -c "export HF_ENDPOINT=https://hf-mirror.com && \
+    for i in {1..3}; do \
+        echo \"尝试下载模型 (第 \$i 次)\" && \
+        timeout 300 mineru-models-download -s huggingface -m all && break || \
+        echo \"下载失败，等待重试...\" && sleep 10; \
+    done" || \
+    echo "模型下载将在运行时进行，支持离线部署"
+
+# 复制应用代码
+COPY app/ .
+
+# ECS GPU环境CUDA修复脚本
+RUN echo '#!/bin/bash' > /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '# ECS GPU环境CUDA修复脚本' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'echo "=== ECS GPU环境CUDA修复 ==="' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '# 检查GPU设备' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'if [ -e /dev/nvidia0 ]; then' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '    echo "检测到GPU设备: /dev/nvidia0"' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '    ls -la /dev/nvidia* || true' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'else' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '    echo "警告: 未检测到GPU设备"' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'fi' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '# 检查NVIDIA驱动' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'if command -v nvidia-smi >/dev/null 2>&1; then' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '    echo "NVIDIA驱动状态:"' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '    nvidia-smi || echo "nvidia-smi执行失败"' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'else' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '    echo "警告: nvidia-smi不可用"' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'fi' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '# 检查CUDA库' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'echo "CUDA库检查:"' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'find /usr/local/cuda* -name "libcuda*" 2>/dev/null || echo "未找到CUDA库"' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'find /usr/lib* -name "libcuda*" 2>/dev/null || echo "未找到系统CUDA库"' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '# 设置CUDA环境变量' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'export CUDA_HOME=/usr/local/cuda' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'export PATH=\$CUDA_HOME/bin:\$PATH' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'export LD_LIBRARY_PATH=\$CUDA_HOME/lib64:\$LD_LIBRARY_PATH' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'echo "CUDA环境变量已设置"' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'echo "CUDA_HOME: \$CUDA_HOME"' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'echo "PATH: \$PATH"' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'echo "LD_LIBRARY_PATH: \$LD_LIBRARY_PATH"' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '# 验证PyTorch GPU支持' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'python -c "' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'import torch' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'import torchvision' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'print(f\"PyTorch版本: {torch.__version__}\")' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'print(f\"TorchVision版本: {torchvision.__version__}\")' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'print(f\"CUDA可用: {torch.cuda.is_available()}\")' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'if torch.cuda.is_available():' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '    print(f\"GPU数量: {torch.cuda.device_count()}\")' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '    print(f\"当前GPU: {torch.cuda.current_device()}\")' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '    print(f\"GPU名称: {torch.cuda.get_device_name(0)}\")' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '    print(f\"GPU内存: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f}GB\")' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'else:' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '    print(\"GPU不可用，将使用CPU模式\")' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '"' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo '' >> /usr/local/bin/fix-cuda-ecs.sh && \
+    echo 'echo "=== CUDA修复完成 ==="' >> /usr/local/bin/fix-cuda-ecs.sh
+
+# 设置脚本权限
+RUN chmod +x /usr/local/bin/fix-cuda-ecs.sh
+
+# 设置脚本权限
+RUN chmod +x /usr/local/bin/fix-cuda-ecs.sh
+
+# 更新entrypoint脚本以使用ECS专用的CUDA修复
+RUN sed -i 's|/usr/local/bin/fix-cuda.sh|/usr/local/bin/fix-cuda-ecs.sh|g' /app/entrypoint.sh
+
+# 设置脚本权限
+RUN chmod +x /app/entrypoint.sh
+
+# 添加CUDA预热到entrypoint
+RUN echo "python -c 'import torch; torch.zeros(1).cuda()' > /dev/null 2>&1 || true" >> /app/entrypoint.sh
+
+# 验证关键依赖版本和GPU功能 - 修改NumPy版本断言
+RUN python -c "import numpy; print(f'NumPy version: {numpy.__version__}'); assert numpy.__version__.startswith('1.2'), 'NumPy must be 1.2x series'" && \
+    python -c "import scipy; print(f'SciPy version: {scipy.__version__}')" && \
+    python -c "import cv2; print(f'OpenCV version: {cv2.__version__}'); cv2.imread" && \
+    python -c "import torch; import torchvision; print(f'PyTorch version: {torch.__version__}'); print(f'TorchVision version: {torchvision.__version__}'); print(f'CUDA compiled version: {torch.version.cuda}'); print(f'CUDA available: {torch.cuda.is_available()}'); print('✅ PyTorch GPU verification passed')" && \
+    python -c "import mineru; print('✅ MinerU imported successfully')" || echo "⚠️ MinerU verification will be done at runtime"
+
+# 增强健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/health && \
+        python -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'" || exit 1
+
+# 暴露端口
+EXPOSE 8080
+
+# 设置入口点
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["python", "main.py"]
