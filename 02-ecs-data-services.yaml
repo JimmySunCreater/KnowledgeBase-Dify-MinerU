@@ -98,6 +98,67 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
+  # CloudFront Origin Access Identity
+  CloudFrontOAI:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub 'OAI for ${ProjectName}-${Environment}'
+
+  # S3 Bucket Policy to allow CloudFront access
+  DataBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DataBucket
+      PolicyDocument:
+        Statement:
+          - Sid: AllowCloudFrontOAI
+            Effect: Allow
+            Principal:
+              CanonicalUser: !GetAtt CloudFrontOAI.S3CanonicalUserId
+            Action: 's3:GetObject'
+            Resource: !Sub '${DataBucket.Arn}/*'
+
+  # CloudFront Distribution for image serving
+  ImageCDN:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: !Sub '${ProjectName}-${Environment} Image CDN'
+        Enabled: true
+        HttpVersion: http2
+        PriceClass: PriceClass_100  # Use only North America and Europe
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt DataBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOAI}'
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          MinTTL: 0
+          DefaultTTL: 86400      # 1 day
+          MaxTTL: 31536000       # 1 year
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
 Outputs:
   # S3 Bucket Outputs
   DataBucketName:
@@ -149,3 +210,16 @@ Outputs:
     Value: !GetAtt ProcessingDLQ.Arn
     Export:
       Name: !Sub '${AWS::StackName}-ProcessingDLQArn'
+
+  # CloudFront Outputs
+  CloudFrontDomainName:
+    Description: CloudFront distribution domain name
+    Value: !GetAtt ImageCDN.DomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontDomain'
+
+  CloudFrontDistributionId:
+    Description: CloudFront distribution ID
+    Value: !Ref ImageCDN
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontDistributionId'

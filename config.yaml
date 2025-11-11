@@ -54,6 +54,7 @@ staging:
 # Production environment
 production:
   environment: production
+  aws_region: us-west-2
   instance_type: g4dn.xlarge
   min_size: 1
   max_size: 2
