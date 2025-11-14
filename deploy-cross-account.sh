@@ -324,7 +324,7 @@ usage() {
     echo "  deploy-data     Deploy data services stack only"
     echo "  deploy-trigger  Deploy trigger services stack only"
     echo "  deploy-compute  Deploy compute services stack only"
-    echo "  delete-all      Delete all stacks in reverse order"
+    echo "  delete-all      Complete cleanup: empty S3, delete stacks, remove logs"
     echo "  status          Show status of all stacks"
     echo "  validate        Validate configuration and prerequisites"
     echo ""
@@ -356,6 +356,12 @@ usage() {
     echo ""
     echo "  # Deploy with custom environment"
     echo "  $0 -e staging deploy-all"
+    echo ""
+    echo "  # Complete cleanup (removes all resources)"
+    echo "  $0 delete-all"
+    echo ""
+    echo "  # Check deployment status"
+    echo "  $0 status"
 }
 
 # Parse command line arguments
@@ -565,9 +571,39 @@ case $COMMAND in
         print_warning "This will delete ALL stacks and resources. Are you sure? (y/N)"
         read -r confirmation
         if [[ $confirmation =~ ^[Yy]$ ]]; then
-            print_status "Deleting all stacks in reverse order..."
+            print_status "Starting complete cleanup process..."
             
-            # Delete stacks in reverse order
+            # Step 1: Get bucket name before deleting stacks
+            print_status "Step 1: Retrieving S3 bucket name..."
+            if stack_exists "$DATA_STACK_NAME"; then
+                bucket_name_cmd="aws cloudformation describe-stacks --stack-name $DATA_STACK_NAME --region $AWS_REGION --query \"Stacks[0].Outputs[?OutputKey=='DataBucketName'].OutputValue\" --output text"
+                if [ -n "$AWS_PROFILE" ]; then
+                    bucket_name_cmd="$bucket_name_cmd --profile $AWS_PROFILE"
+                fi
+                BUCKET_NAME=$(eval $bucket_name_cmd 2>/dev/null || echo "")
+                
+                if [ -n "$BUCKET_NAME" ]; then
+                    print_status "Found bucket: $BUCKET_NAME"
+                    
+                    # Empty S3 bucket
+                    print_status "Emptying S3 bucket..."
+                    empty_cmd="aws s3 rm s3://$BUCKET_NAME --recursive --region $AWS_REGION"
+                    if [ -n "$AWS_PROFILE" ]; then
+                        empty_cmd="$empty_cmd --profile $AWS_PROFILE"
+                    fi
+                    
+                    if eval $empty_cmd; then
+                        print_success "S3 bucket emptied successfully"
+                    else
+                        print_warning "Failed to empty S3 bucket, continuing with stack deletion..."
+                    fi
+                else
+                    print_warning "Could not retrieve bucket name, skipping S3 cleanup"
+                fi
+            fi
+            
+            # Step 2: Delete stacks in reverse order
+            print_status "Step 2: Deleting CloudFormation stacks in reverse order..."
             for stack in "$COMPUTE_STACK_NAME" "$TRIGGER_STACK_NAME" "$DATA_STACK_NAME" "$INFRA_STACK_NAME"; do
                 if stack_exists "$stack"; then
                     print_status "Deleting stack: $stack"
@@ -576,10 +612,70 @@ case $COMMAND in
                         delete_cmd="$delete_cmd --profile $AWS_PROFILE"
                     fi
                     eval $delete_cmd
+                    
+                    # Wait for stack deletion to complete
+                    wait_for_stack_deletion "$stack"
                 fi
             done
             
-            print_success "Deletion initiated for all stacks"
+            # Step 3: Clean up remaining resources
+            print_status "Step 3: Cleaning up remaining resources..."
+            
+            # Delete ECR repository if exists
+            ecr_repo_name="${PROJECT_NAME}-processor"
+            print_status "Checking for ECR repository: $ecr_repo_name"
+            ecr_check_cmd="aws ecr describe-repositories --repository-names $ecr_repo_name --region $AWS_REGION"
+            if [ -n "$AWS_PROFILE" ]; then
+                ecr_check_cmd="$ecr_check_cmd --profile $AWS_PROFILE"
+            fi
+            
+            if eval $ecr_check_cmd >/dev/null 2>&1; then
+                print_status "Deleting ECR repository: $ecr_repo_name"
+                ecr_delete_cmd="aws ecr delete-repository --repository-name $ecr_repo_name --force --region $AWS_REGION"
+                if [ -n "$AWS_PROFILE" ]; then
+                    ecr_delete_cmd="$ecr_delete_cmd --profile $AWS_PROFILE"
+                fi
+                eval $ecr_delete_cmd
+            fi
+            
+            # Delete CloudWatch log groups
+            print_status "Deleting CloudWatch log groups..."
+            for log_group in "/ecs/${PROJECT_NAME}-processor" "/aws/lambda/${PROJECT_NAME}-trigger" "/aws/lambda/${PROJECT_NAME}-postprocess"; do
+                log_check_cmd="aws logs describe-log-groups --log-group-name-prefix $log_group --region $AWS_REGION"
+                if [ -n "$AWS_PROFILE" ]; then
+                    log_check_cmd="$log_check_cmd --profile $AWS_PROFILE"
+                fi
+                
+                if eval $log_check_cmd >/dev/null 2>&1; then
+                    print_status "Deleting log group: $log_group"
+                    log_delete_cmd="aws logs delete-log-group --log-group-name $log_group --region $AWS_REGION"
+                    if [ -n "$AWS_PROFILE" ]; then
+                        log_delete_cmd="$log_delete_cmd --profile $AWS_PROFILE"
+                    fi
+                    eval $log_delete_cmd 2>/dev/null || true
+                fi
+            done
+            
+            # Step 4: Verify cleanup
+            print_status "Step 4: Verifying cleanup..."
+            remaining_stacks_cmd="aws cloudformation list-stacks --region $AWS_REGION --query \"StackSummaries[?contains(StackName, '$PROJECT_NAME') && StackStatus != 'DELETE_COMPLETE'].StackName\" --output text"
+            if [ -n "$AWS_PROFILE" ]; then
+                remaining_stacks_cmd="$remaining_stacks_cmd --profile $AWS_PROFILE"
+            fi
+            
+            remaining_stacks=$(eval $remaining_stacks_cmd)
+            if [ -z "$remaining_stacks" ]; then
+                print_success "All stacks deleted successfully!"
+            else
+                print_warning "Some stacks may still exist: $remaining_stacks"
+            fi
+            
+            print_success "Complete cleanup finished!"
+            print_status "Summary:"
+            echo "  ✓ S3 bucket emptied"
+            echo "  ✓ CloudFormation stacks deleted"
+            echo "  ✓ ECR repository cleaned"
+            echo "  ✓ CloudWatch logs removed"
         else
             print_status "Deletion cancelled"
         fi
