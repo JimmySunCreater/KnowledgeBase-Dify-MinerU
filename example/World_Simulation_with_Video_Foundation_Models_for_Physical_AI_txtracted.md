@@ -96,7 +96,7 @@ A multi-stage filtering process then removes low-quality or unsuitable data. Fil
 
 This multi-stage filtering pipeline comprises several key components, each serving a unique purpose. To begin with, we apply an aesthetic scoring filter, which grades the inputs by their aesthetic quality. Following this, we apply a motion filter, which quantifies and removes clips based on their degree of motion. The third stage is an OCR filter that attempts to remove clips with excessive text overlay. In the fourth stage, we apply a perceptual quality filter (akin to DOVER (Wu et al., 2023)) to weed out clips with technical distortions and perceptual artifacts. Next, we use a “semantic artifacts” filter (akin to VTSS (Wang et al., 2025)) that aims to filter out clips with semantic artifacts (video-in-video, poor transitions, etc.). Finally, we use a vision language model (VLM) (Bai et al., 2025) to further remove clips with a set of undesirable issues with higher precision. We apply the VLM at the very end of filtering because it is computationally more expensive. Surviving clips are subsequently categorized via a video content-type classifier, which enables structured downstream use of the dataset. At this stage, we further exclude content depicting physically unrealistic phenomena—such as video games, synthetic visual patterns, animations, or cartoons—to maintain alignment with the physical world distributions.
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/a324d1743489d142749d5b9a773452bd7a5a087f35d086fbed9c64db66f0ee0a.jpg)  
+![](images/a324d1743489d142749d5b9a773452bd7a5a087f35d086fbed9c64db66f0ee0a.jpg)  
 Figure 1: Our video curation pipeline transforms raw, unstructured video data from diverse real-world sources into a high-quality, annotated, deduplicated, and sharded dataset optimized for large-scale training of video world foundation models.
 
 In the video captioning stage, we segment each clip into 5-second windows and caption each window using a Qwen2.5-VL-7B vision-language model (Bai et al., 2025), prompting it to generate factual, context-aware captions. We apply targeted prompt engineering to guide the model toward descriptions that emphasize the primary object, its motion, and key semantic details in the scene. Captions are produced at multiple lengths (short, medium, and long) to support diverse use cases, serving as both supervision signals and conditioning prompts for the model training.
@@ -208,7 +208,7 @@ Each [Cosmos-Predict2.5] model is designed to operate in three modes: Text2World
 
 For both Image2World and Video2World, we employ a frame-replacement strategy, where the initial frames of the generated sequence are consistently substituted with the conditioned frames. This approach serves two purposes: (1) it provides flexibility, since the number of conditioned frames can be adjusted depending on the task, and (2) it strengthens temporal consistency by ensuring that early frames remain faithful to the conditioning input. As a result, visual cues from the input image or video propagate more smoothly across subsequent frames, leading to more coherent world generation.
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/ba55a4b03a6823daee43645dacb751d5e9562d60d786a17f0f9c7c09df6ce36c.jpg)  
+![](images/ba55a4b03a6823daee43645dacb751d5e9562d60d786a17f0f9c7c09df6ce36c.jpg)  
 Figure 2: Overall architecture of [Cosmos-Predict2.5]. As shown on the right, in the latent space, the model applies repeated blocks of self-attention, cross-attention, and feed-forward MLP layers, modulated by adaptive layer normalization (scale, shift, gate) for a given time step $t$ . We leverage [Cosmos-Reason1] as the text encoder (shown on the left). [Cosmos-Reason1] can also accommodate visual inputs (image and video) beyond text, which we leave for future work.
 
 # 4. Training
@@ -241,10 +241,10 @@ We fine-tune a separate model for each domain rather than training a single mode
 
 To evaluate these models, we construct a domain-specific test set for each category and conduct human preference studies. As shown in Fig. 3, every SFT model achieves a significantly higher win rate than the pretrained baseline on its target domain.
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/13683fa7dcd43566cd6d3d16e72ee0a43bcabdd885d431a26c930a00d5217320.jpg)  
+![](images/13683fa7dcd43566cd6d3d16e72ee0a43bcabdd885d431a26c930a00d5217320.jpg)  
 Figure 3: Domain-specific SFT training improves the performance of the pretrained model on each domain.
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/5af3c5cea4907a6ac4f1cb94647db6ddcb4bad3d7983dcc0670da1dab2afbbfb.jpg)  
+![](images/5af3c5cea4907a6ac4f1cb94647db6ddcb4bad3d7983dcc0670da1dab2afbbfb.jpg)  
 Figure 4: Merged model gets the best of all the worlds while maintaining performance on the general domain. Win rate for pretrained is average across three comparisons.
 
 In addition, we apply a cooldown stage to the pretrained model using a curated set of high-quality 4K videos, where the learning rate is linearly decayed to zero. This step enhances fine-grained visual detail and produces smoother motion.
@@ -253,7 +253,7 @@ To unify the strengths of both the domain-specific SFT models and the cooldown m
 
 Interestingly, we find that simple grid search over hyperparameters consistently outperforms heuristic selection based on individual fine-tuned models’ win rates. As illustrated in Fig. 4, all methods achieve comparable performance with the exception of DARE-Linear. Given its effectiveness and simplicity, we select the model soup variant as our final post-trained model.
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/e244e505018255f86ce7d004509cf6d4417e4af53ae9b8fe5be1202ae6553320.jpg)  
+![](images/e244e505018255f86ce7d004509cf6d4417e4af53ae9b8fe5be1202ae6553320.jpg)  
 Figure 5: Human voting shows that RL can effectively improve the quality of the generated videos.
 
 # 4.2.2. Reinforcement Learning
@@ -312,14 +312,14 @@ Table 11: Results on PAI-Bench-Predict-Image2World benchmark.
 
 <html><body><table><tr><td>Model</td><td>Domain Score</td><td>Quality Score</td><td>Overall Score</td></tr><tr><td>Cosmos-Predict2.5-2B [pre-train]</td><td>0.824</td><td>0.775</td><td>0.799</td></tr><tr><td>Cosmos-Predict2.5-2B [post-train]</td><td>0.840</td><td>0.779</td><td>0.810</td></tr><tr><td>Cosmos-Predict2.5-14B [pre-train]</td><td>0.835</td><td>0.777</td><td>0.806</td></tr><tr><td>Cosmos-Predict2.5-14B [post-train]</td><td>0.838</td><td>0.781</td><td>0.810</td></tr><tr><td>Wan2.1-14B</td><td>0.827</td><td>0.768</td><td>0.797</td></tr><tr><td>Wan2.2-5B</td><td>0.834</td><td>0.774</td><td>0.804</td></tr><tr><td>Wan2.2-27B-A14B</td><td>0.841</td><td>0.772</td><td>0.806</td></tr></table></body></html>
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/7b6c859b9e7c38199549f910c72856aae4d28d28425a2a24e9debfdc303c6c07.jpg)  
+![](images/7b6c859b9e7c38199549f910c72856aae4d28d28425a2a24e9debfdc303c6c07.jpg)  
 Figure 6: Despite being of smaller size, post-trained [Cosmos-Predict2.5-2B] is on par with Wan2.2 5B and Wan2.1 14B on a diverse set of prompts.
 
 Similarily, Fig. 7 shows that our post-trained 14B is preferred more often than Wan 2.1 14B, and achieves on par performance against Wan 2.2 27B-A14B, despite having only half of the parameter counts.
 
 Figure 7: Across a diverse set of prompts, post-trained [Cosmos-Predict2.5-14B] is preferred more often than Wan 2.1 14B, and achieves on par performance to Wan 2.2 27B-A14B, despite having only half the parameter count.
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/bf4ea5f108ccf615f028d44140800a705257d24ac64f0c092beb814fba759d1c.jpg)
+![](images/bf4ea5f108ccf615f028d44140800a705257d24ac64f0c092beb814fba759d1c.jpg)
 
 Qualitative Examples. Evaluation of generative video models requires both quantitative and qualitative perspectives. Automated benchmarks and human evaluation yield measurable results, but qualitative inspection reveals model behaviors that are difficult to capture numerically. We present high-quality sample videos generated by [Cosmos-Predict2.5-2B], focusing on physical AI. These examples complement benchmark results by illustrating the model’s ability to generate realistic, high-quality, and physically coherent world simulations.
 
@@ -339,7 +339,7 @@ In terms of architecture, [Cosmos-Transfer2.5-2B] follows the general design of 
 
 #
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/8782dd6b7adb2f461d150fce1efbf13db290c82caecb468179115997c261570b.jpg)  
+![](images/8782dd6b7adb2f461d150fce1efbf13db290c82caecb468179115997c261570b.jpg)  
 Figure 8: [Cosmos-Predict2.5-2B] post-trained prediction samples on the PAI-Bench dataset.
 
 2025), but with a key modification. Whereas [Cosmos-Transfer1-7B] inserts four control blocks sequentially at the start of the main branch, [Cosmos-Transfer2.5-2B] distributes its four control blocks more evenly by inserting one after every seven blocks in the main branch. This design preserves the total number of control blocks while integrating conditioning information more gradually throughout the network. For additional architectural details, please refer to [Cosmos-Transfer1](NVIDIA, 2025).
@@ -356,7 +356,7 @@ Table 12: Quantitative evaluation on transfer models for various configurations.
 
 # Cosmos-Transfer1-7B
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/a80ec50ac975905a786eb63d31a36ba886a6feb007e9f1316a0c1fe8fe9d7123.jpg)  
+![](images/a80ec50ac975905a786eb63d31a36ba886a6feb007e9f1316a0c1fe8fe9d7123.jpg)  
 Figure 9: Sample comparison results of [Cosmos-Transfer2.5-2B]. Compared to [Cosmos-Transfer1-7B], [Cosmos-Transfer2.5-2B] has better prompt alignment, better adherence to control input, and less hallucination and error accumulation (especially for long videos).
 
 # 6.1.1. Results
@@ -365,7 +365,7 @@ For evaluation, we use PAIBench-Transfer (Zhou et al., 2025), a benchmark datase
 
 As shown in the table, [Cosmos-Transfer2.5-2B] outperforms [Cosmos-Transfer1-7B] on both metrics, despite being 3.5 times smaller in size. This improvement can be attributed to two factors: (1) stronger [CosmosPredict2.5-2B] as the base model, and (2) the use of more carefully curated, Physics-AI-focused training data, which better aligns with the benchmark domains. Visual comparisons highlighting these gains are provided in Fig. 9.
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/b53210b3593242ee19aa4363879e9b4f00c8e48221b24bf815a2f304db895be3.jpg)  
+![](images/b53210b3593242ee19aa4363879e9b4f00c8e48221b24bf815a2f304db895be3.jpg)  
 Figure 10: Error accumulation for long video generations. These plots show the Normalized Relative Dover Score vs Chunk Index for auto-regressive multi-trunk long video generation where each trunk is 93 frames. As shown, for all four control modalities (edge/blur/depth/seg), compared to [Cosmos-Transfer1-7B] (blue curves), [Cosmos-Transfer2.5-2B] (green curves) has much less reduction in RNDS along the chunk index dimension, which shows less hallucination and error accumulation for long videos.
 
 # 6.1.2. Long Video Generation
@@ -404,7 +404,7 @@ The demonstration task is a bimanual pick-and-place scenario involving two objec
 
 In total, we collect 100 human teleoperation demonstrations of this task. Using these demonstrations, we train a UNet-based Diffusion Policy (Ren et al., 2025; Chi et al., 2023), which takes the single-image observation (processed via a small ViT) with gripper joint state and predicts chunks of actions consisting of the target end-effector poses and gripper commands for both arms. Each chunk spans a horizon of 8 timesteps sampled at 10 FPS. Examples of egocentric image observations recorded during the demonstrations are shown in Fig. 11, illustrating the consistency of the setup and the controlled variability introduced by object placement.
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/b65583ae6270e1ad778f8f8e59a2f33bb04a7859b97b5b1f335bd55637fe3a7f.jpg)  
+![](images/b65583ae6270e1ad778f8f8e59a2f33bb04a7859b97b5b1f335bd55637fe3a7f.jpg)  
 Figure 11: Real-Robot Teleoperation Samples. Two episodes of image observations captured from the egocentric camera during demonstration collection. We keep the object instances and scene fixed and only change the objects’ (apple and bowl) poses.
 
 # 6.2.2. Data Augmentation Strategy
@@ -417,12 +417,12 @@ From the refined caption, we construct a formatted prompt that marks which compo
 
 The scene depicts a bright, modern kitchen with plenty of ambient light. From a first-person perspective, a robot faces [TABLE]. On the table rest [COLOR_APPLE] apple and [COLOR_BOWL] bowl. [SENTENCE_LIGHT] In the background are a black cooking range featuring a black stovetop, wooden countertops, and cabinetry with white doors and drawers, including a built-in white dishwasher on the left. [SENTENCE_BACKGROUND] A wide black curtain hangs vertically on the right side, covering a large portion of the space. As the video progresses, the robot picks up the apple, then the bowl, places the apple into the bowl, and sets the bowl down on the table.
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/075a25f99a64f4cd0a0c66a281421609c20f93a73d345923401f0f37bd660997.jpg)  
+![](images/075a25f99a64f4cd0a0c66a281421609c20f93a73d345923401f0f37bd660997.jpg)  
 Figure 12: Real-Robot Data Augmentation Gallery. We show the baseline (top row) and [Cosmos-Transfer2.5- 2B] (bottom two rows) data augmentation samples.
 
 In Fig. 12 (bottom two rows), we present a few examples of diverse and realistic synthetic videos used for visual augmentation. These examples illustrate variations in apple and bowl colors, table appearances with realistic textures, as well as diverse lighting conditions, object shadows, and background changes. For each of the 100 original demonstration videos, we randomly generate five synthetic variants for augmentation. The rest of the training data (i.e., actions and joint states) remain unchanged, while only the input images are augmented.
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/7c286f2f2257aaa846f89e16940069299a24d3fa1184898ef426915a25e8c29a.jpg)  
+![](images/7c286f2f2257aaa846f89e16940069299a24d3fa1184898ef426915a25e8c29a.jpg)  
 Figure 13: [Cosmos-Transfer2.5] Real-Robot Policy Rollouts. We present sample [Cosmos-Transfer2.5-2B] policy rollouts under the base setting and nine unseen test-time scenarios.
 
 # 6.2.3. Experiments and Results
@@ -472,14 +472,14 @@ For [Cosmos-Transfer2.5-2B/auto/multiview], we project HD maps and dynamic objec
 
 To train the control net, we use the RDS-HQ dataset (Ren et al., 2025), which consists of 140,000 20-second multi-view driving scenes and HD map metadata covering a diverse set of traffic scenarios. Compared to the original control videos used in this work, the new world scenario map improves the following aspects: firstly, it has fine-grained controls of lane line types (e.g., dashed line, dotted line, double yellow line), whose colors and geometry patterns are directly rendered into the control video. Secondly, the bounding boxes of dynamic objects are occlusion-aware and heading-aware, providing more accurate control signals for the model learning.
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/ce968de54ac0550877576000d9cf4359d0ff7528580760447eef031b9ceaf293.jpg)  
+![](images/ce968de54ac0550877576000d9cf4359d0ff7528580760447eef031b9ceaf293.jpg)  
 Figure 14: Generated multi-view frames from [Cosmos-Transfer2.5-2B/auto/multiview]. The multi-view 720p control videos for driving simulation consist of HD map elements like lanes, road markings, poles, traffic signals, traffic lights (with state), all of which can represent complex road topologies (including overpasses) as well as actors represented as cuboids. Each cuboid is color-coded based on a coarse class ontology (e.g., truck, vehicle, pedestrian), and is also shaded to differentiate between the front and back.
 
 # 6.3.3. Experiments and Results
 
 We train [Cosmos-Predict2.5-2B/auto/multiview] for 2 epochs on the $1 . 5 \mathrm { m }$ clip dataset, using a global batch size of 64 and context parallelism of 8. We denoise 203 frames (29 per view) using 30 FPS video. For [Cosmos-Transfer2.5-2B/auto/multiview], we subsample the video and control inputs to 10FPS.
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/a97316814c8db7b38d98a7d505faef1d094c5484c0dcb739edd985c5cd6c45f7.jpg)  
+![](images/a97316814c8db7b38d98a7d505faef1d094c5484c0dcb739edd985c5cd6c45f7.jpg)  
 Figure 15: Comparative controlled generations between [Cosmos-Transfer1-7B-Sample-AV] and [CosmosTransfer2.5-2B/auto/multiview]. In example (1), we can observe that [Cosmos-Transfer1-7B-Sample-AV] hallucinates a distorted black car behind the silver vehicle, which is described neither in the text prompt nor in the control video. We can also observe the lack of alignment to the control signal when generating the parked vehicles behind the grassy mounds. In example (2), we can observe that [Cosmos-Transfer1-7B-Sample-AV] renders the vehicle in the central lane driving on the wrong side of the street with an incorrect orientation, as well as a truck instead of a pedestrian close to the sidewalk. All these inconsistencies are resolved in [Cosmos-Transfer2.5-2B/auto/multiview].
 
 For evaluation, we use a 1000 multi-view clip dataset in RQS-HQ (Ren et al., 2025), with HD map, as well as human-labeled lanes and cuboids. These clips are disjoint from the prior two datasets used in training. As shown in Tab. 14, we observe a significant boost (up to $2 . 3 \mathrm { x }$ ) in FVD/FID scores while remaining competitive in temporal and cross-camera Sampson error.
@@ -503,15 +503,15 @@ Training Datasets. We train our model on the following datasets:
 • Agibot (Bu et al., 2025): A robot dataset contain ${ \sim } 1 , 0 0 0 , 0 0 0$ episodes. We sample 145,820 episodes, each providing 3 video views with precise camera pose information.   
 • MultiCamVideo (Bai et al., 2025): A large-scale synthetic dataset comprising 136,000 episodes of human motion captured with dynamic camera trajectories.
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/2861109010b27abd2a85f1fb667686069d4e686db4847624a1d1af517d5a789c.jpg)  
+![](images/2861109010b27abd2a85f1fb667686069d4e686db4847624a1d1af517d5a789c.jpg)  
 The robot arms use its right hand to scoop peas from a metal container using a spoon
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/5ec1a9ca4ca36b193d029e5c1a0678fea735fa7705f0d42b070add86f6ff7ccf.jpg)  
+![](images/5ec1a9ca4ca36b193d029e5c1a0678fea735fa7705f0d42b070add86f6ff7ccf.jpg)  
 he robot arms use its left hand to pick up the toy train placed on the wooden surfac
 
 Figure 16: [Cosmos-Transfer2.5-2B/robot/multiview-agibot] generates temporally synchronized robotic manipulation videos from the left and right gripper viewpoints, conditioned on the head-view input.
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/ebfec6ae0ec24b3b99b640a1ce8773af9db2bd1f696f298f3197be33ed7373ad.jpg)  
+![](images/ebfec6ae0ec24b3b99b640a1ce8773af9db2bd1f696f298f3197be33ed7373ad.jpg)  
 Figure 17: [Cosmos-Transfer2.5-2B/robot/multiview] synthesizes synchronized videos under basic dynamic and static camera transformations, conditioned on the third-view robotic manipulation input.
 
 • SynCamVideo (Bai et al., 2025): A complementary synthetic dataset containing 34,000 episodes similar in content to MultiCamVideo but with fixed novel camera viewpoints, enabling evaluation under static multi-view settings.
@@ -522,14 +522,14 @@ Experiments. We adopt [Cosmos-Predict2.5-2B] as the backbone model and further p
 
 We further evaluate the generated synchronized videos along two dimensions: (1) camera trajectory error. including rotation error and translation, which measures the error between predicted camera poses from ViPE (Huang et al., 2025) on the generated videos and the corresponding ground-truth poses, and (2) cross-view consistency, quantified by the Sampson error between pairs of generated views (NVIDIA, 2025). Specifically, we conduct experiments on 80 validation videos with 16 camera trajectories using [Cosmos-Transfer2.5-2B/ robot/multiview]. For the baseline, we implement a single-view-to-single-view variant ([Cosmos-Transfer2.5- 2B/robot/singleview]) by restricting the number of target views to a single view. As illustrated in Fig. 18 and Tab. 17, [Cosmos-Transfer2.5-2B/robot/multiview] achieves significantly better cross-view consistency than its single-view counterpart, while maintaining comparable camera trajectory accuracy.
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/efde4d84c8274758556c7515f8f8c0b8e29c8bde00a45ebabda27b7ac5e67c0f.jpg)  
+![](images/efde4d84c8274758556c7515f8f8c0b8e29c8bde00a45ebabda27b7ac5e67c0f.jpg)  
 Figure 18: View synchronization comparison. [Cosmos-Transfer2.5-2B/robot/multiview] generates more coherent videos across multiple viewpoints, compared with the single-view targeted baseline (the red dotted box highlights the inconsistent parts).
 
 Beyond [Cosmos-Transfer2.5-2B/robot/multiview], we further develop [Cosmos-Predict2.5-2B/robot/multiview agibot], which takes three single images (two gripper views and one head view) along with their corresponding camera trajectories as input to generate three robotic manipulation videos, as shown in Fig. 19. The model is trained on Agibot dataet and adopts the same architecture as [Cosmos-Transfer2.5-2B/robot/multiview]. This task facilitates the generation of diverse data for training robotic policies.
 
 Table 17: Multi-Camera Video Generation Evaluation. We evaluate both our model and the baseline on 80 in-the-wild robotic manipulation videos across 16 diverse camera trajectories. Best is bolded.
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/f74bc03fa561d6e25b7f6d40273e23b44c525241db26365c85194c3ec1192dcf.jpg)  
+![](images/f74bc03fa561d6e25b7f6d40273e23b44c525241db26365c85194c3ec1192dcf.jpg)  
 The robotic arms place a transparent plastic package containing a white object into an open cardboard box   
 Figure 19: [Cosmos-Predict2.5-2B/robot/multiview-agibot] generates synchronized robotic manipulation videos conditioned on single-frame input of 3-camera views and their corresponding camera trajectories.
 
@@ -559,7 +559,7 @@ Experiments. We conduct experiments using the public Bridge dataset (Walke et al
 
 To evaluate the quality of video generation, we randomly sample 100 episodes from the official Bridge test set and generate videos for them, comparing the results against the ground-truth videos. We use [Cosmos-Predict1- 7B-Video2World-Sample-ActionCond] as a baseline for comparison.
 
-![](https://d2rlflwenrr1uz.cloudfront.net/processed/ac1daac3-ff03-44ef-a7ed-c4c0c28b6598/World_Simulation_with_Video_Foundation_Models_for_Physical_AI_0/auto/images/0102beb62faffed67e954c39993b02b1243c7dad70389825d791b9314e285bbb.jpg)  
+![](images/0102beb62faffed67e954c39993b02b1243c7dad70389825d791b9314e285bbb.jpg)  
 Figure 20: Action-conditioned video prediction samples on the Bridge dataset. Comparison of predicted rollouts from [Cosmos-Predict2.5-2B/robot/action-cond] and [Cosmos-Predict1-7B-Video2World-SampleActionCond] against the ground-truth frames. [Cosmos-Predict2.5-2B/robot/action-cond] demonstrates better object permanence. The green dotted box highlights the parts with the object permanence issues.
 
 The quantitative metrics, summarized in Tab. 19, include PSNR, SSIM, Latent L2 (Zhu et al., 2024), and FVD. As shown, the [Cosmos-Predict2.5-2B/robot/action-cond] models outperform the baseline across all metrics. Selected predicted video frames are presented in Fig. 20, highlighting the high quality of the predictions relative to the ground-truth frames.
