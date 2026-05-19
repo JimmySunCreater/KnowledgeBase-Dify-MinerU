@@ -7,7 +7,9 @@
 [![MinerU](https://img.shields.io/badge/MinerU-3.0.1-blue.svg)](https://github.com/opendatalab/MinerU)
 
 作者：孙健-亚马逊云科技解决方案架构师，10+ 年汽车行业从业经验，从事汽车电子电器分析、自动驾驶解决方案相关领域，对自动驾驶、软件定义汽车等云架构设计及AI应用有丰富经验。
+
 AWS官方代码仓库：https://github.com/aws-samples/sample-mineru-ecs-gpu-deployment 
+
 AWS Blog:
 1. 基于 MinerU 和 AWS Serverless 构建企业级 RAG 文档处理平台-文档处理平台搭建 https://aws.amazon.com/cn/blogs/china/building-enterprise-rag-document-processing-platform-based-on-mineru-and-aws-serverless-2/
 2. 基于 MinerU 和 AWS Serverless 构建企业级 RAG 文档处理平台-平台搭建-聊天助手部署与 Prompt 工程 https://aws.amazon.com/cn/blogs/china/building-enterprise-rag-document-processing-platform-based-on-mineru-and-aws-serverless/
